@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Theejournaal" />
+<title>Theejournaal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', -apple-system, sans-serif; background: #F2EEE1; color: #292520; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+const TYPES = ["Groen", "Wit", "Geel", "Oolong", "Zwart", "Dark/Fermented", "Kruiden/Overig"];
+
+const TYPE_COLOR = {
+  "Groen": { bg: "#EAF3DE", text: "#27500A" },
+  "Wit": { bg: "#F1EFE8", text: "#444441" },
+  "Geel": { bg: "#FAEEDA", text: "#633806" },
+  "Oolong": { bg: "#FAECE7", text: "#712B13" },
+  "Zwart": { bg: "#F1EFE8", text: "#2C2C2A" },
+  "Dark/Fermented": { bg: "#E1F5EE", text: "#085041" },
+  "Kruiden/Overig": { bg: "#FBEAF0", text: "#72243E" },
+};
+
+const STORES = ["Thee Maas", "Simon Lévelt", "De Theebaron"];
+const STOCK_STATES = ["Op voorraad", "Bijna op", "Op"];
+const DATA_PATH = "data/entries.json";
+const CONFIG_KEY = "tea-github-config";
+
+const emptyForm = {
+  id: null, naam: "", type: "Groen", regio: "", winkel: "", aankoopdatum: "",
+  prijs: "", hoeveelheid: "", voorraad: "Op voorraad", kleurInfuus: "#C9A227",
+  smaak: "", uiterlijk: "", rating: 3, opnieuwKopen: null,
+};
+
+function Leaf({ filled }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+      <path d="M4 20C4 10 10 4 20 4C20 14 14 20 4 20Z" fill={filled ? "#4A5D3A" : "none"} stroke={filled ? "#4A5D3A" : "#B4B2A9"} strokeWidth="1.5" />
+      <path d="M5 19L14 10" stroke={filled ? "#EAF3DE" : "#D3D1C7"} strokeWidth="1" fill="none" />
+    </svg>
+  );
+}
+
+function RatingLeaves({ value, onChange }) {
+  return (
+    <div style={{ display: "flex", gap: 3 }}>
+      {[1,2,3,4,5].map((n) => (
+        <button key={n} type="button" onClick={() => onChange && onChange(n)}
+          style={{ background: "none", border: "none", padding: 2, cursor: onChange ? "pointer" : "default", lineHeight: 0 }}
+          aria-label={`${n} van 5 blaadjes`}>
+          <Leaf filled={n <= value} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// --- GitHub storage helpers ---
+function b64EncodeUnicode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function b64DecodeUnicode(str) {
+  return decodeURIComponent(escape(atob(str)));
+}
+
+async function githubGetFile(cfg) {
+  const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${DATA_PATH}`, {
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: "application/vnd.github+json" },
+  });
+  if (res.status === 404) return { entries: [], sha: null };
+  if (!res.ok) throw new Error(`GitHub GET fout: ${res.status}`);
+  const data = await res.json();
+  const content = JSON.parse(b64DecodeUnicode(data.content.replace(/\n/g, "")));
+  return { entries: content, sha: data.sha };
+}
+
+async function githubPutFile(cfg, entries, sha) {
+  const body = {
+    message: `Update theejournaal (${new Date().toISOString()})`,
+    content: b64EncodeUnicode(JSON.stringify(entries, null, 2)),
+    branch: "main",
+  };
+  if (sha) body.sha = sha;
+  const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${DATA_PATH}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GitHub opslaan mislukt: ${res.status} ${errText}`);
+  }
+  const data = await res.json();
+  return data.content.sha;
+}
+
+function SetupScreen({ onSaved }) {
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
+  const [token, setToken] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setErr("");
+    setTesting(true);
+    const cfg = { owner: owner.trim(), repo: repo.trim(), token: token.trim() };
+    try {
+      await githubGetFile(cfg);
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+      onSaved(cfg);
+    } catch (e2) {
+      setErr("Kon niet verbinden. Controleer owner, repository en token. (" + e2.message + ")");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div style={{ padding: "40px 24px", maxWidth: 460, margin: "0 auto", fontFamily: "'Inter', sans-serif" }}>
+      <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: 28 }}>Theejournaal instellen</h1>
+      <p style={{ color: "#6E6A5C", fontSize: 14, lineHeight: 1.6 }}>
+        Vul je GitHub-gegevens in. Dit token wordt alleen lokaal op dit toestel opgeslagen, nergens anders.
+      </p>
+      <form onSubmit={handleSave}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#6E6A5C", marginTop: 14, marginBottom: 4 }}>GitHub gebruikersnaam</label>
+        <input style={{ width: "100%", border: "1px solid #DAD2BB", borderRadius: 8, padding: 10, fontSize: 14 }} value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="bijv. dbuni-dotcom" required />
+
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#6E6A5C", marginTop: 14, marginBottom: 4 }}>Repository naam</label>
+        <input style={{ width: "100%", border: "1px solid #DAD2BB", borderRadius: 8, padding: 10, fontSize: 14 }} value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="bijv. Theeapp" required />
+
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#6E6A5C", marginTop: 14, marginBottom: 4 }}>Personal Access Token</label>
+        <input type="password" style={{ width: "100%", border: "1px solid #DAD2BB", borderRadius: 8, padding: 10, fontSize: 14 }} value={token} onChange={(e) => setToken(e.target.value)} placeholder="github_pat_..." required />
+
+        {err && <div style={{ color: "#712B13", fontSize: 13, marginTop: 10 }}>{err}</div>}
+
+        <button type="submit" disabled={testing} style={{ marginTop: 20, width: "100%", background: "#4A5D3A", color: "#F2EEE1", border: "none", borderRadius: 8, padding: "12px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          {testing ? "Verbinden..." : "Opslaan en verbinden"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function TeaJournal({ cfg }) {
+  const [entries, setEntries] = useState([]);
+  const [sha, setSha] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [expandedId, setExpandedId] = useState(null);
+  const [filterType, setFilterType] = useState("Alle");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("datum");
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { entries: e, sha: s } = await githubGetFile(cfg);
+      setEntries(e);
+      setSha(s);
+    } catch (e) {
+      setError("Kon niet laden vanaf GitHub: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [cfg]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  async function persist(next) {
+    setEntries(next);
+    setSyncing(true);
+    setError("");
+    try {
+      const newSha = await githubPutFile(cfg, next, sha);
+      setSha(newSha);
+    } catch (e) {
+      setError("Opslaan naar GitHub mislukt: " + e.message);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function openNew() { setForm(emptyForm); setShowForm(true); }
+  function openEdit(entry) { setForm(entry); setShowForm(true); }
+  function closeForm() { setShowForm(false); setForm(emptyForm); }
+
+  function saveForm(e) {
+    e.preventDefault();
+    if (!form.naam.trim()) return;
+    let next;
+    if (form.id) next = entries.map((en) => (en.id === form.id ? form : en));
+    else next = [{ ...form, id: Date.now().toString() }, ...entries];
+    persist(next);
+    closeForm();
+  }
+
+  function removeEntry(id) {
+    persist(entries.filter((en) => en.id !== id));
+    setExpandedId(null);
+  }
+
+  const filtered = useMemo(() => {
+    let list = entries;
+    if (filterType !== "Alle") list = list.filter((e) => e.type === filterType);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((e) =>
+        e.naam.toLowerCase().includes(q) ||
+        (e.regio || "").toLowerCase().includes(q) ||
+        (e.winkel || "").toLowerCase().includes(q));
+    }
+    const sorted = [...list];
+    if (sortBy === "rating") sorted.sort((a, b) => b.rating - a.rating);
+    else if (sortBy === "naam") sorted.sort((a, b) => a.naam.localeCompare(b.naam));
+    else sorted.sort((a, b) => (b.aankoopdatum || "").localeCompare(a.aankoopdatum || ""));
+    return sorted;
+  }, [entries, filterType, search, sortBy]);
+
+  const styles = {
+    page: { padding: "32px 24px", maxWidth: 900, margin: "0 auto" },
+    header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 8, flexWrap: "wrap", gap: 16 },
+    title: { fontFamily: "'Fraunces', Georgia, serif", fontSize: 34, fontWeight: 600, margin: 0 },
+    tagline: { fontSize: 13, color: "#6E6A5C", marginTop: 4 },
+    syncline: { fontSize: 12, color: "#4A5D3A", marginBottom: 20 },
+    addBtn: { background: "#4A5D3A", color: "#F2EEE1", border: "none", borderRadius: 8, padding: "10px 18px", fontSize: 14, fontWeight: 600, cursor: "pointer" },
+    toolbar: { display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" },
+    input: { border: "1px solid #DAD2BB", background: "#FBF8EF", borderRadius: 8, padding: "8px 12px", fontSize: 14, color: "#292520", fontFamily: "inherit" },
+    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 },
+    card: { background: "#FBF8EF", border: "1px solid #DAD2BB", borderRadius: 12, padding: 16, cursor: "pointer" },
+    badge: (t) => ({ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 999, background: (TYPE_COLOR[t]||{}).bg || "#F1EFE8", color: (TYPE_COLOR[t]||{}).text || "#444441" }),
+    swatch: (color) => ({ width: 16, height: 16, borderRadius: "50%", background: color, border: "1px solid rgba(0,0,0,0.15)", flexShrink: 0 }),
+    modalOverlay: { position: "fixed", inset: 0, background: "rgba(41,37,32,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 },
+    modal: { background: "#F2EEE1", borderRadius: 14, padding: 24, width: "min(560px, 100%)", maxHeight: "85vh", overflowY: "auto" },
+    label: { display: "block", fontSize: 12, fontWeight: 600, color: "#6E6A5C", marginBottom: 4, marginTop: 14 },
+    field: { width: "100%", boxSizing: "border-box", border: "1px solid #DAD2BB", background: "#FFFFFF", borderRadius: 8, padding: "9px 11px", fontSize: 14, fontFamily: "inherit", color: "#292520" },
+    row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+  };
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>Theejournaal</h1>
+          <div style={styles.tagline}>{entries.length} thee{entries.length === 1 ? "" : "ën"} vastgelegd &middot; {cfg.owner}/{cfg.repo}</div>
+        </div>
+        <button style={styles.addBtn} onClick={openNew}>+ Nieuwe thee</button>
+      </div>
+      <div style={styles.syncline}>{syncing ? "Bezig met opslaan naar GitHub..." : loading ? "Laden vanaf GitHub..." : "Gesynchroniseerd met GitHub"}</div>
+
+      {error && <div style={{ color: "#712B13", fontSize: 13, marginBottom: 16, background: "#FAECE7", padding: "8px 12px", borderRadius: 8 }}>{error} <button onClick={loadData} style={{ marginLeft: 8, cursor: "pointer" }}>Opnieuw proberen</button></div>}
+
+      <div style={styles.toolbar}>
+        <input style={{ ...styles.input, minWidth: 180, flex: 1 }} placeholder="Zoek op naam, regio of winkel..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <select style={styles.input} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <option value="Alle">Alle types</option>
+          {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select style={styles.input} value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="datum">Nieuwste eerst</option>
+          <option value="rating">Hoogste rating</option>
+          <option value="naam">Naam A-Z</option>
+        </select>
+      </div>
+
+      {loading ? null : filtered.length === 0 ? (
+        <div style={{ color: "#6E6A5C", fontSize: 14, padding: "40px 0", textAlign: "center" }}>
+          {entries.length === 0 ? "Nog geen thee vastgelegd. Voeg je eerste thee toe." : "Geen thee gevonden voor deze filters."}
+        </div>
+      ) : (
+        <div style={styles.grid}>
+          {filtered.map((entry) => {
+            const expanded = expandedId === entry.id;
+            return (
+              <div key={entry.id} style={styles.card} onClick={() => setExpandedId(expanded ? null : entry.id)}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>{entry.naam}</div>
+                    <span style={styles.badge(entry.type)}>{entry.type}</span>
+                  </div>
+                  <div style={styles.swatch(entry.kleurInfuus)} title="Kleur van het infuus" />
+                </div>
+                <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <RatingLeaves value={entry.rating} />
+                  <div style={{ fontSize: 12, color: "#6E6A5C" }}>{entry.winkel}</div>
+                </div>
+                {expanded && (
+                  <div style={{ marginTop: 14, borderTop: "1px solid #DAD2BB", paddingTop: 12, fontSize: 13, lineHeight: 1.6 }} onClick={(e) => e.stopPropagation()}>
+                    {entry.regio && <div><strong>Regio:</strong> {entry.regio}</div>}
+                    {entry.aankoopdatum && <div><strong>Aankoopdatum:</strong> {entry.aankoopdatum}</div>}
+                    {entry.hoeveelheid && <div><strong>Hoeveelheid:</strong> {entry.hoeveelheid}</div>}
+                    {entry.prijs && <div><strong>Prijs:</strong> €{entry.prijs}</div>}
+                    <div><strong>Voorraad:</strong> {entry.voorraad}</div>
+                    {entry.smaak && <div style={{ marginTop: 6 }}><strong>Smaak:</strong> {entry.smaak}</div>}
+                    {entry.uiterlijk && <div style={{ marginTop: 6 }}><strong>Uiterlijk:</strong> {entry.uiterlijk}</div>}
+                    {entry.opnieuwKopen !== null && <div style={{ marginTop: 6 }}><strong>Opnieuw kopen:</strong> {entry.opnieuwKopen ? "Ja" : "Nee"}</div>}
+                    <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                      <button style={{ ...styles.input, cursor: "pointer" }} onClick={() => openEdit(entry)}>Bewerken</button>
+                      <button style={{ ...styles.input, cursor: "pointer", color: "#712B13", borderColor: "#F0997B" }} onClick={() => removeEntry(entry.id)}>Verwijderen</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showForm && (
+        <div style={styles.modalOverlay} onClick={closeForm}>
+          <form style={styles.modal} onClick={(e) => e.stopPropagation()} onSubmit={saveForm}>
+            <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 20, margin: 0 }}>{form.id ? "Thee bewerken" : "Nieuwe thee"}</h2>
+
+            <label style={styles.label}>Naam *</label>
+            <input style={styles.field} required value={form.naam} onChange={(e) => setForm({ ...form, naam: e.target.value })} placeholder="bijv. Longjing Xihu" />
+
+            <div style={styles.row2}>
+              <div>
+                <label style={styles.label}>Type</label>
+                <select style={styles.field} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                  {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={styles.label}>Regio / oorsprong</label>
+                <input style={styles.field} value={form.regio} onChange={(e) => setForm({ ...form, regio: e.target.value })} placeholder="bijv. Hangzhou, China" />
+              </div>
+            </div>
+
+            <div style={styles.row2}>
+              <div>
+                <label style={styles.label}>Winkel</label>
+                <input style={styles.field} list="winkel-opties" value={form.winkel} onChange={(e) => setForm({ ...form, winkel: e.target.value })} placeholder="bijv. Thee Maas" />
+                <datalist id="winkel-opties">{STORES.map((s) => <option key={s} value={s} />)}</datalist>
+              </div>
+              <div>
+                <label style={styles.label}>Aankoopdatum</label>
+                <input type="date" style={styles.field} value={form.aankoopdatum} onChange={(e) => setForm({ ...form, aankoopdatum: e.target.value })} />
+              </div>
+            </div>
+
+            <div style={styles.row2}>
+              <div>
+                <label style={styles.label}>Hoeveelheid</label>
+                <input style={styles.field} value={form.hoeveelheid} onChange={(e) => setForm({ ...form, hoeveelheid: e.target.value })} placeholder="bijv. 50g" />
+              </div>
+              <div>
+                <label style={styles.label}>Prijs (€)</label>
+                <input type="number" step="0.01" style={styles.field} value={form.prijs} onChange={(e) => setForm({ ...form, prijs: e.target.value })} placeholder="bijv. 12.50" />
+              </div>
+            </div>
+
+            <div style={styles.row2}>
+              <div>
+                <label style={styles.label}>Voorraad</label>
+                <select style={styles.field} value={form.voorraad} onChange={(e) => setForm({ ...form, voorraad: e.target.value })}>
+                  {STOCK_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={styles.label}>Kleur van het infuus</label>
+                <input type="color" style={{ ...styles.field, padding: 4, height: 38 }} value={form.kleurInfuus} onChange={(e) => setForm({ ...form, kleurInfuus: e.target.value })} />
+              </div>
+            </div>
+
+            <label style={styles.label}>Smaak &amp; wat je ervan vond</label>
+            <textarea style={{ ...styles.field, minHeight: 60, resize: "vertical" }} value={form.smaak} onChange={(e) => setForm({ ...form, smaak: e.target.value })} placeholder="fruitig, licht zoet, weinig bitterheid..." />
+
+            <label style={styles.label}>Uiterlijk (droge blaadjes / infuus)</label>
+            <textarea style={{ ...styles.field, minHeight: 60, resize: "vertical" }} value={form.uiterlijk} onChange={(e) => setForm({ ...form, uiterlijk: e.target.value })} placeholder="platte gladde blaadjes, helder groenig infuus..." />
+
+            <label style={styles.label}>Rating</label>
+            <RatingLeaves value={form.rating} onChange={(n) => setForm({ ...form, rating: n })} />
+
+            <label style={styles.label}>Opnieuw kopen?</label>
+            <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
+              <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                <input type="radio" checked={form.opnieuwKopen === true} onChange={() => setForm({ ...form, opnieuwKopen: true })} /> Ja
+              </label>
+              <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                <input type="radio" checked={form.opnieuwKopen === false} onChange={() => setForm({ ...form, opnieuwKopen: false })} /> Nee
+              </label>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+              <button type="submit" style={{ ...styles.addBtn, flex: 1 }}>Opslaan</button>
+              <button type="button" style={{ ...styles.input, cursor: "pointer" }} onClick={closeForm}>Annuleren</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [cfg, setCfg] = useState(() => {
+    try {
+      const raw = localStorage.getItem(CONFIG_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  });
+  if (!cfg) return <SetupScreen onSaved={setCfg} />;
+  return <TeaJournal cfg={cfg} />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
