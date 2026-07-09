@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "1783629362310",
+    "naam": "Sencha lemon",
+    "type": "Groen",
+    "regio": "Onbekend",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-06-22",
+    "prijs": "6.5",
+    "hoeveelheid": "100 g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#00ff00",
+    "smaak": "Fris citroen",
+    "uiterlijk": "Null",
+    "rating": 4,
+    "opnieuwKopen": true
+  }
+]
