@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783699857068",
+    "naam": "Darjeeling nurbong",
+    "type": "Zwart",
+    "regio": "Darjeeling",
+    "winkel": "",
+    "aankoopdatum": "2026-06-15",
+    "prijs": "8.5",
+    "hoeveelheid": "100g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "Lekker licht floraal zoet",
+    "uiterlijk": "",
+    "rating": 4,
+    "opnieuwKopen": true
+  },
+  {
     "id": "1783629780482",
     "naam": "Lemongrass",
     "type": "Kruiden/Overig",
