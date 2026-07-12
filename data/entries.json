@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783866004587",
+    "naam": "Verveine",
+    "type": "Kruiden/Overig",
+    "regio": "Onbekend",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-07-13",
+    "prijs": "4.5",
+    "hoeveelheid": "50g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "Fris citroenig kenmerkende smaak fijn",
+    "uiterlijk": "Droge geote bladeren",
+    "rating": 3,
+    "opnieuwKopen": true
+  },
+  {
     "id": "1783862823956",
     "naam": "Wild Yellow Chrisanthemum",
     "type": "Kruiden/Overig",
