@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783867011904",
+    "naam": "Cool peach",
+    "type": "Kruiden/Overig",
+    "regio": "",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-06-08",
+    "prijs": "6.5",
+    "hoeveelheid": "100g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "Zoals cool peacht zurig voor mij. Door troebelheid ziet het er niet lekker uit voor mij",
+    "uiterlijk": "Invuus is troebel",
+    "rating": 3,
+    "opnieuwKopen": null
+  },
+  {
     "id": "1783866374395",
     "naam": "Honeybush",
     "type": "Kruiden/Overig",
