@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783866086812",
+    "naam": "Rooi is",
+    "type": "Kruiden/Overig",
+    "regio": "Onbekend",
+    "winkel": "Simon levelt",
+    "aankoopdatum": "2026-06-08",
+    "prijs": "5.5",
+    "hoeveelheid": "100g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "Lekker. Maar eentonig",
+    "uiterlijk": "Kleine rooibos stengels",
+    "rating": 3,
+    "opnieuwKopen": null
+  },
+  {
     "id": "1783866004587",
     "naam": "Verveine",
     "type": "Kruiden/Overig",
