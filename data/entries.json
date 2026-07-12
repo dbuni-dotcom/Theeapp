@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783866303526",
+    "naam": "Pu erh",
+    "type": "Dark/Fermented",
+    "regio": "Onbekend",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-07-12",
+    "prijs": "5",
+    "hoeveelheid": "50g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "",
+    "uiterlijk": "",
+    "rating": 3,
+    "opnieuwKopen": null
+  },
+  {
     "id": "1783866181946",
     "naam": "Rooibos ",
     "type": "Kruiden/Overig",
