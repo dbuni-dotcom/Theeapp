@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783866374395",
+    "naam": "Honeybush",
+    "type": "Kruiden/Overig",
+    "regio": "Za",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-07-12",
+    "prijs": "3",
+    "hoeveelheid": "50",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "",
+    "uiterlijk": "",
+    "rating": 3,
+    "opnieuwKopen": null
+  },
+  {
     "id": "1783866303526",
     "naam": "Pu erh",
     "type": "Dark/Fermented",
