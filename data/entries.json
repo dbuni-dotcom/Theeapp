@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783862692921",
+    "naam": "Pai mu tan",
+    "type": "Wit",
+    "regio": "Onbekend",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-07-12",
+    "prijs": "7.5",
+    "hoeveelheid": "50g",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "",
+    "uiterlijk": "",
+    "rating": 3,
+    "opnieuwKopen": null
+  },
+  {
     "id": "1783862635039",
     "naam": "China pu erh",
     "type": "Dark/Fermented",
