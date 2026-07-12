@@ -1,5 +1,21 @@
 [
   {
+    "id": "1783856333683",
+    "naam": "Kukicha",
+    "type": "Groen",
+    "regio": "Japan",
+    "winkel": "Thee Maas",
+    "aankoopdatum": "2026-06-08",
+    "prijs": "15.5",
+    "hoeveelheid": "100",
+    "voorraad": "Op voorraad",
+    "kleurInfuus": "#C9A227",
+    "smaak": "Grassig fris. Voor mij te grassig. Wel lekker met toevoegingen zoals lemongrass of veveine",
+    "uiterlijk": "",
+    "rating": 1,
+    "opnieuwKopen": false
+  },
+  {
     "id": "1783699857068",
     "naam": "Darjeeling nurbong",
     "type": "Zwart",
